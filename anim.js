@@ -155,9 +155,12 @@
       logoCanvasKeyed = logoCanvasClipped;
     }
 
-    // ── keyed-out version for DARK backgrounds ───────────────────────────
-    // Removes pixels by color-distance ONLY — no brightness threshold so
-    // bright/light logo elements (text, highlights) are fully preserved.
+    // ── keyed-out version for DARK backgrounds (BFS flood-fill) ──────────
+    // Instead of scanning every pixel globally (which removes light logo
+    // elements that happen to match the background colour), we BFS from
+    // the image edges outward.  Only pixels that are SPATIALLY CONNECTED
+    // to the outer border AND colour-close to the background are removed.
+    // Interior bright/light logo details are completely untouched.
     logoCanvasDarkKeyed = document.createElement('canvas');
     logoCanvasDarkKeyed.width  = W2;
     logoCanvasDarkKeyed.height = H2;
@@ -167,19 +170,68 @@
     try {
       const imgData2 = ld.getImageData(0, 0, W2, H2);
       const data2 = imgData2.data;
+      const W = W2, H = H2;
+      const BG_THRESH_SQ = 40 * 40; // squared distance threshold
 
-      for (let i = 0; i < data2.length; i += 4) {
-        const r = data2[i], g = data2[i+1], b = data2[i+2];
-        const dist = Math.sqrt((r - r0)**2 + (g - g0)**2 + (b - b0)**2);
+      // Typed-array queues — no GC pressure for a 600×600 image
+      const visited = new Uint8Array(W * H);
+      const qx = new Int16Array(W * H);
+      const qy = new Int16Array(W * H);
+      let head = 0, tail = 0;
 
-        if (dist < 22) {
-          data2[i+3] = 0; // fully transparent
-        } else if (dist < 50) {
-          // soft anti-alias edge only
-          data2[i+3] = Math.min(data2[i+3], Math.floor(clamp((dist - 22) / 28) * 255));
+      const enqueue = (x, y) => {
+        const idx = y * W + x;
+        if (!visited[idx]) {
+          visited[idx] = 1;
+          qx[tail] = x;
+          qy[tail] = y;
+          tail++;
         }
-        // all other pixels (including bright logo elements) kept fully opaque
+      };
+
+      // Seed BFS from every pixel on all 4 edges
+      for (let x = 0; x < W; x++) { enqueue(x, 0); enqueue(x, H - 1); }
+      for (let y = 1; y < H - 1; y++) { enqueue(0, y); enqueue(W - 1, y); }
+
+      const DX = [-1, 1, 0, 0];
+      const DY = [0, 0, -1, 1];
+
+      while (head < tail) {
+        const x = qx[head];
+        const y = qy[head];
+        head++;
+
+        const i = (y * W + x) * 4;
+        const dr = data2[i]   - r0;
+        const dg = data2[i+1] - g0;
+        const db = data2[i+2] - b0;
+        const distSq = dr*dr + dg*dg + db*db;
+
+        // If this pixel doesn't match the background, stop expanding here
+        if (distSq > BG_THRESH_SQ) continue;
+
+        // Remove background pixel — soft feather near the edge of the threshold
+        const dist = Math.sqrt(distSq);
+        const SOFT_START = 22;
+        const SOFT_END   = 40;
+        if (dist < SOFT_START) {
+          data2[i + 3] = 0; // fully transparent
+        } else {
+          // Smooth anti-alias transition at the logo boundary
+          const t = clamp((dist - SOFT_START) / (SOFT_END - SOFT_START));
+          data2[i + 3] = Math.min(data2[i + 3], Math.floor(t * 255));
+        }
+
+        // Expand flood-fill to 4-connected neighbours
+        for (let d = 0; d < 4; d++) {
+          const nx = x + DX[d];
+          const ny = y + DY[d];
+          if (nx >= 0 && nx < W && ny >= 0 && ny < H) {
+            enqueue(nx, ny);
+          }
+        }
       }
+
       ld.putImageData(imgData2, 0, 0);
     } catch (e) {
       console.warn("Dark keying failed, using raw.", e);
