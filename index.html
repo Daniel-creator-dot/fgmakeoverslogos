@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FG Makeovers – Animated Logo Studio</title>
+  <meta name="description" content="FG Makeovers animated logo studio. Export your brand animation as GIF or video.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="light-mode">
+
+  <!-- App Shell -->
+  <div class="app-wrap" id="app-wrap">
+
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-eye">Visual Identity Studio</span>
+        <h1 class="brand-name">FG Makeovers</h1>
+      </div>
+      <button class="theme-btn" id="theme-toggle-btn" aria-label="Toggle theme">
+        <span class="sun-icon">☀</span>
+        <span class="moon-icon">☾</span>
+      </button>
+    </header>
+
+    <!-- Main -->
+    <main class="main-grid">
+
+      <!-- ── CANVAS PREVIEW ── -->
+      <section class="preview-card" id="preview-card">
+        <canvas id="anim-canvas" width="600" height="600"></canvas>
+        <div class="canvas-badge" id="scene-badge">Scene 1 — Awakening</div>
+      </section>
+
+      <!-- ── CONTROLS ── -->
+      <aside class="controls-col">
+
+        <!-- Scene Picker -->
+        <div class="ctrl-block">
+          <h2 class="ctrl-title">Animation Style</h2>
+          <div class="scene-btns" id="style-btns">
+            <button class="scene-btn active" data-style="cinematic" id="btn-cinematic">
+              <span class="sb-name">✦ Cinematic Brand Reel</span>
+              <span class="sb-desc">Full story — 10 sec with shimmer, reveal & tagline</span>
+            </button>
+            <button class="scene-btn" data-style="elegant" id="btn-elegant">
+              <span class="sb-name">Elegant Reveal</span>
+              <span class="sb-desc">Sequential logo draw-in — 5 sec</span>
+            </button>
+            <button class="scene-btn" data-style="bloom" id="btn-bloom">
+              <span class="sb-name">Lotus Bloom</span>
+              <span class="sb-desc">Soft organic unfold — 5 sec</span>
+            </button>
+            <button class="scene-btn" data-style="line-drawing" id="btn-drawing">
+              <span class="sb-name">Line Sketch</span>
+              <span class="sb-desc">Stroke trace to full colour — 5 sec</span>
+            </button>
+            <button class="scene-btn" data-style="vector-draw" id="btn-vector">
+              <span class="sb-name">🎨 Pure Vector Draw</span>
+              <span class="sb-desc">Organic line tracing and stroke reveal — 6 sec</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Playback -->
+        <div class="ctrl-block">
+          <h2 class="ctrl-title">Playback</h2>
+          <div class="pb-row">
+            <button class="pb-btn" id="play-pause-btn">⏸ Pause</button>
+            <button class="pb-btn" id="replay-btn">⟳ Replay</button>
+          </div>
+          <div class="loop-row">
+            <span class="loop-lbl">Auto-Loop</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="loop-toggle" checked>
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+          <div class="speed-row">
+            <label class="speed-lbl">Speed</label>
+            <input type="range" id="speed-slider" min="0.2" max="2" step="0.1" value="1" class="speed-range">
+            <span class="speed-val" id="speed-val">1.0×</span>
+          </div>
+        </div>
+
+        <!-- Theme -->
+        <div class="ctrl-block">
+          <h2 class="ctrl-title">Canvas Background</h2>
+          <div class="bg-swatches" id="bg-swatches">
+            <button class="swatch active" data-bg="cream" id="sw-cream" title="Cream">
+              <span class="swatch-dot" style="background:#fcf6f0;"></span>Cream
+            </button>
+            <button class="swatch" data-bg="dark" id="sw-dark" title="Dark">
+              <span class="swatch-dot" style="background:#14100e;"></span>Dark
+            </button>
+            <button class="swatch" data-bg="rose" id="sw-rose" title="Rose Gold">
+              <span class="swatch-dot" style="background:#f5e6e0;"></span>Rose
+            </button>
+            <button class="swatch" data-bg="black" id="sw-black" title="Pure Black">
+              <span class="swatch-dot" style="background:#000;"></span>Black
+            </button>
+          </div>
+        </div>
+
+        <!-- Export -->
+        <div class="ctrl-block">
+          <h2 class="ctrl-title">Export & Download</h2>
+          <button class="exp-btn primary-exp" id="download-gif-btn">🖼 Download Animated GIF</button>
+          <button class="exp-btn video-exp" id="download-video-btn">🎬 Download Video (MP4)</button>
+          <button class="exp-btn ghost-exp" id="download-svg-btn">↓ Download SVG</button>
+        </div>
+
+      </aside>
+    </main>
+
+    <!-- Progress Overlay -->
+    <div class="export-overlay" id="export-overlay">
+      <div class="exp-modal">
+        <div class="exp-spinner"></div>
+        <h3 class="exp-title" id="exp-title">Generating...</h3>
+        <p class="exp-desc" id="exp-desc">Rendering frames...</p>
+        <div class="exp-bar-bg">
+          <div class="exp-bar" id="exp-bar"></div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="app-footer">
+      <p>FG Makeovers · Flawless. Gorgeous. You. · Visual Identity Studio</p>
+    </footer>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gifshot/0.3.2/gifshot.min.js"></script>
+  <script src="anim.js"></script>
+</body>
+</html>
