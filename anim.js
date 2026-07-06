@@ -91,7 +91,7 @@
   const LOGO_RADIUS = 272;
 
   function getLogoSource(key) {
-    if (key === 'dark' || key === 'black') return logoCanvasDarkKeyed || logoImg;
+    if (key === 'dark' || key === 'black') return logoCanvasClipped || logoImg;
     return logoCanvasKeyed || logoImg;
   }
 
