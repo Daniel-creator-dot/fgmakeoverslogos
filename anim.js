@@ -83,13 +83,15 @@
 
   // ── Logo image ───────────────────────────────────────────────────────
   const logoImg = new Image();
-  let logoCanvasClipped = null; // circle-clipped raw logo (retains cream bg inside circle)
-  let logoCanvasKeyed   = null; // fully keyed out logo — light bg removed (light backgrounds)
+  let logoCanvasClipped   = null; // circle-clipped raw logo
+  let logoCanvasKeyed     = null; // brightness-keyed: removes cream bg (light backgrounds)
+  let logoCanvasDarkKeyed = null; // BFS-keyed: removes only outer bg, full colours kept (dark backgrounds)
 
   // Radius of the logo circle in the 600×600 canvas
   const LOGO_RADIUS = 272;
 
-  function getLogoSource() {
+  function getLogoSource(key) {
+    if (key === 'dark' || key === 'black') return logoCanvasDarkKeyed || logoImg;
     return logoCanvasKeyed || logoImg;
   }
 
@@ -151,8 +153,45 @@
       logoCanvasKeyed = logoCanvasClipped;
     }
 
-    // Dark backgrounds use multiply blend mode at draw time (see drawLogoMultiply).
-    // No extra per-pixel processing needed here.
+    // ── dark-keyed version (BFS flood-fill, no brightness cutoff) ──────────
+    // Only the spatially-connected outer background region is removed.
+    // Every logo pixel — regardless of how bright or light it is — stays
+    // fully opaque at its original colour, so the logo is visible on dark canvases.
+    logoCanvasDarkKeyed = document.createElement('canvas');
+    logoCanvasDarkKeyed.width  = W2;
+    logoCanvasDarkKeyed.height = H2;
+    const ld = logoCanvasDarkKeyed.getContext('2d');
+    ld.drawImage(logoImg, 0, 0, W2, H2);
+    try {
+      const d2   = ld.getImageData(0, 0, W2, H2);
+      const px2  = d2.data;
+      const TSQD = 38 * 38; // squared colour-distance threshold
+      const vis  = new Uint8Array(W2 * H2);
+      const qx   = new Int16Array(W2 * H2);
+      const qy   = new Int16Array(W2 * H2);
+      let head = 0, tail = 0;
+      const eq = (x, y) => { const i = y * W2 + x; if (!vis[i]) { vis[i]=1; qx[tail]=x; qy[tail]=y; tail++; } };
+      for (let x = 0; x < W2; x++) { eq(x, 0); eq(x, H2-1); }
+      for (let y = 1; y < H2-1; y++) { eq(0, y); eq(W2-1, y); }
+      const DX = [-1,1,0,0], DY = [0,0,-1,1];
+      while (head < tail) {
+        const x = qx[head], y = qy[head++];
+        const i = (y * W2 + x) * 4;
+        const dr = px2[i]-r0, dg = px2[i+1]-g0, db = px2[i+2]-b0;
+        const dsq = dr*dr + dg*dg + db*db;
+        if (dsq > TSQD) continue;           // not background — stop expanding
+        const dist = Math.sqrt(dsq);
+        px2[i+3] = dist < 22 ? 0 : Math.min(px2[i+3], Math.floor(clamp((dist-22)/16)*255));
+        for (let d = 0; d < 4; d++) {
+          const nx = x+DX[d], ny = y+DY[d];
+          if (nx>=0 && nx<W2 && ny>=0 && ny<H2) eq(nx, ny);
+        }
+      }
+      ld.putImageData(d2, 0, 0);
+    } catch(e) {
+      console.warn('Dark keying failed, using clipped.', e);
+      logoCanvasDarkKeyed = logoCanvasClipped;
+    }
   }
 
   logoImg.crossOrigin = 'anonymous';
@@ -243,13 +282,11 @@
    */
   function drawLogo(c, alpha = 1, scale = 1, offsetY = 0) {
     if (!logoReady) return;
-    const src = getLogoSource();
-    const dark = isDarkBg(bgKey);
+    const src = getLogoSource(bgKey);
     c.save();
     c.globalAlpha = alpha;
     c.translate(W / 2, H / 2 + offsetY);
     c.scale(scale, scale);
-    if (dark) c.globalCompositeOperation = 'multiply';
     c.drawImage(src, -W / 2, -H / 2, W, H);
     c.restore();
   }
@@ -259,8 +296,7 @@
    */
   function drawLogoCircleReveal(c, radius, alpha = 1, scale = 1) {
     if (!logoReady || radius <= 0) return;
-    const src = getLogoSource();
-    const dark = isDarkBg(bgKey);
+    const src = getLogoSource(bgKey);
     c.save();
     c.globalAlpha = alpha;
     c.translate(W / 2, H / 2);
@@ -268,7 +304,6 @@
     c.beginPath();
     c.arc(0, 0, radius / scale, 0, Math.PI * 2);
     c.clip();
-    if (dark) c.globalCompositeOperation = 'multiply';
     c.drawImage(src, -W / 2, -H / 2, W, H);
     c.restore();
   }
@@ -278,15 +313,13 @@
    */
   function drawLogoVerticalWipe(c, wipe, alpha = 1) {
     if (!logoReady || wipe <= 0) return;
-    const src = getLogoSource();
-    const dark = isDarkBg(bgKey);
+    const src = getLogoSource(bgKey);
     c.save();
     c.globalAlpha = alpha;
     const revealTop = H - H * wipe;
     c.beginPath();
     c.rect(0, revealTop, W, H);
     c.clip();
-    if (dark) c.globalCompositeOperation = 'multiply';
     c.drawImage(src, 0, 0, W, H);
     c.restore();
   }
@@ -296,15 +329,13 @@
    */
   function drawLogoHorizontalReveal(c, wipe, alpha = 1) {
     if (!logoReady || wipe <= 0) return;
-    const src = getLogoSource();
-    const dark = isDarkBg(bgKey);
+    const src = getLogoSource(bgKey);
     c.save();
     c.globalAlpha = alpha;
     const halfW = (W / 2) * wipe;
     c.beginPath();
     c.rect(W / 2 - halfW, 0, halfW * 2, H);
     c.clip();
-    if (dark) c.globalCompositeOperation = 'multiply';
     c.drawImage(src, 0, 0, W, H);
     c.restore();
   }
@@ -910,8 +941,7 @@
       c.rotate(rot);
       c.scale(s, s);
       c.globalAlpha = alpha;
-      const src = getLogoSource();
-      if (isDarkBg(bg)) c.globalCompositeOperation = 'multiply';
+      const src = getLogoSource(bg);
       c.drawImage(src, -W / 2, -H / 2, W, H);
       c.restore();
     }
@@ -941,15 +971,13 @@
     }
 
     if (openT > 0) {
-      const src = getLogoSource();
+      const src = getLogoSource(bg);
       const halfW = (W / 2) * openT;
-      const dark = isDarkBg(bg);
 
       c.save();
       c.beginPath();
       c.rect(W / 2 - halfW, 0, halfW, H);
       c.clip();
-      if (dark) c.globalCompositeOperation = 'multiply';
       c.drawImage(src, 0, 0, W, H);
       c.restore();
 
@@ -957,7 +985,6 @@
       c.beginPath();
       c.rect(W / 2, 0, halfW, H);
       c.clip();
-      if (dark) c.globalCompositeOperation = 'multiply';
       c.drawImage(src, 0, 0, W, H);
       c.restore();
     }
