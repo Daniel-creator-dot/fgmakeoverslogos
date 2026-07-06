@@ -293,17 +293,21 @@
   }
 
   function drawLeftLeaf(c) {
+    // Large sweeping petal — upper edge arcs to tip, lower edge returns along bottom
     c.beginPath();
-    c.moveTo(300, 400);
-    c.bezierCurveTo(260, 345, 195, 315, 150, 305);
-    c.bezierCurveTo(195, 365, 260, 415, 300, 400);
+    c.moveTo(300, 418);
+    c.bezierCurveTo(255, 385, 175, 340, 118, 355);
+    c.bezierCurveTo(155, 415, 240, 460, 300, 458);
+    c.closePath();
   }
 
   function drawRightLeaf(c) {
+    // Mirror of left
     c.beginPath();
-    c.moveTo(300, 400);
-    c.bezierCurveTo(340, 345, 405, 315, 450, 305);
-    c.bezierCurveTo(405, 365, 340, 415, 300, 400);
+    c.moveTo(300, 418);
+    c.bezierCurveTo(345, 385, 425, 340, 482, 355);
+    c.bezierCurveTo(445, 415, 360, 460, 300, 458);
+    c.closePath();
   }
 
   function drawDroplet(c) {
@@ -558,13 +562,13 @@
       c.setLineDash([]);
     }
 
-    // Leaves
+    // Leaves — use a longer path length to match the bigger leaf shape
     const leafT = clamp(seg(drawT, 0.30, 0.70));
     if (leafT > 0) {
-      const PL = 300;
+      const PL = 420;
       c.setLineDash([PL, PL]);
       c.lineDashOffset = PL * (1 - leafT);
-      
+
       drawLeftLeaf(c);  c.stroke();
       drawRightLeaf(c); c.stroke();
 
