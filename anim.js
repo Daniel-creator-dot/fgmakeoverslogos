@@ -836,15 +836,16 @@
   dlSvg.addEventListener('click', () => {
     let svgContent = '';
     const pal = getPalette(bgKey);
+    const bgFill = BG[bgKey] || 'none';
 
     if (animStyle === 'vector-draw') {
       // Export pure vector elements
       svgContent = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">
-  <rect width="600" height="600" fill="${BG[bgKey]}"/>
+  <rect width="600" height="600" fill="${bgFill}"/>
   <!-- Arcs -->
-  <path d="M 121.75 189 A 210 210 0 0 0 121.75 411" fill="none" stroke="${GOLD}" stroke-width="1.8" stroke-linecap="round"/>
-  <path d="M 478.25 189 A 210 210 0 0 1 478.25 411" fill="none" stroke="${GOLD}" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M 123.3 190.8 A 206 206 0 0 0 123.3 409.2" fill="none" stroke="${GOLD}" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M 476.7 190.8 A 206 206 0 0 1 476.7 409.2" fill="none" stroke="${GOLD}" stroke-width="1.8" stroke-linecap="round"/>
   <!-- Circular Text -->
   <!-- Top: FG MAKEOVERS -->
   <path id="topTextPath" d="M 144 186 A 210 210 0 0 1 456 186" fill="none" stroke="none"/>
@@ -857,15 +858,15 @@
     <textPath href="#bottomTextPath" startOffset="50%">FLAWLESS. GORGEOUS. YOU.</textPath>
   </text>
   <!-- Stems -->
-  <path d="M 300,390 C 290,360 250,330 250,280 C 250,230 275,220 274,195 C 275,223 258,230 258,280 C 258,330 292,360 300,390 Z" fill="${GOLD}"/>
-  <path d="M 300,390 C 310,360 350,330 350,280 C 350,230 325,220 326,195 C 325,223 342,230 342,280 C 342,330 308,360 300,390 Z" fill="${GOLD}"/>
+  <path d="M 300,390 C 290,360 250,330 250,280 C 250,230 275,220 274,195 Z" fill="${GOLD}"/>
+  <path d="M 300,390 C 310,360 350,330 350,280 C 350,230 325,220 326,195 Z" fill="${GOLD}"/>
   <!-- Leaves -->
-  <path d="M 300,400 C 270,370 210,330 170,305 C 210,370 260,410 300,400 Z" fill="#d0bfb0"/>
-  <path d="M 300,400 C 330,370 390,330 430,305 C 390,370 340,410 300,400 Z" fill="#965f35"/>
+  <path d="M 300,418 C 255,385 175,340 118,355 C 155,415 240,460 300,458 Z" fill="#d0bfb0"/>
+  <path d="M 300,418 C 345,385 425,340 482,355 C 445,415 360,460 300,458 Z" fill="#965f35"/>
   <!-- Droplet -->
   <path d="M 300,245 C 295,245 278,265 278,285 C 278,300 288,312 300,312 C 312,312 322,300 322,285 C 322,265 305,245 300,245 Z" fill="${GOLD}"/>
   <!-- Head -->
-  <circle cx="300" cy="205" r="16" fill="${pal.text}"/>
+  <circle cx="300" cy="195" r="18" fill="${pal.text}"/>
 </svg>`;
     } else {
       if (!logoReady) { alert('Logo image is still loading.'); return; }
@@ -878,7 +879,7 @@
       svgContent = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
      viewBox="0 0 600 600" width="600" height="600">
-  <rect width="600" height="600" fill="${BG[bgKey]}"/>
+  <rect width="600" height="600" fill="${bgFill}"/>
   <image href="${dataURL}" x="0" y="0" width="600" height="600"/>
 </svg>`;
     }
