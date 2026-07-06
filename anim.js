@@ -83,13 +83,17 @@
 
   // ── Logo image ───────────────────────────────────────────────────────
   const logoImg = new Image();
-  let logoCanvasClipped = null; // circle-clipped raw logo (retains cream bg inside circle)
-  let logoCanvasKeyed   = null; // fully keyed out logo (completely transparent bg)
+  let logoCanvasClipped  = null; // circle-clipped raw logo (retains cream bg inside circle)
+  let logoCanvasKeyed    = null; // fully keyed out logo — light bg removed (light backgrounds)
+  let logoCanvasDarkKeyed = null; // keyed by color-distance only — preserves bright logo elements (dark backgrounds)
 
   // Radius of the logo circle in the 600×600 canvas
   const LOGO_RADIUS = 272;
 
   function getLogoSource(key) {
+    if (key === 'dark' || key === 'black') {
+      return logoCanvasDarkKeyed || logoImg;
+    }
     return logoCanvasKeyed || logoImg;
   }
 
@@ -109,7 +113,19 @@
     lc.clip();
     lc.drawImage(logoImg, 0, 0, W2, H2);
 
-    // Create keyed-out version
+    // Sample background colour once from the top-left pixel of the raw image
+    const rawCtx = document.createElement('canvas').getContext('2d');
+    rawCtx.canvas.width = W2; rawCtx.canvas.height = H2;
+    rawCtx.drawImage(logoImg, 0, 0, W2, H2);
+    let r0 = 252, g0 = 246, b0 = 240; // fallback: cream
+    try {
+      const px = rawCtx.getImageData(0, 0, 1, 1).data;
+      r0 = px[0]; g0 = px[1]; b0 = px[2];
+    } catch (e) { /* CORS – use fallback */ }
+
+    // ── keyed-out version for LIGHT backgrounds ──────────────────────────
+    // Removes pixels by both color-distance AND brightness threshold so
+    // the cream/white background is fully stripped.
     logoCanvasKeyed = document.createElement('canvas');
     logoCanvasKeyed.width  = W2;
     logoCanvasKeyed.height = H2;
@@ -120,34 +136,54 @@
       const imgData = lk.getImageData(0, 0, W2, H2);
       const data = imgData.data;
 
-      // Sample background color from top-left pixel (0,0)
-      const r0 = data[0];
-      const g0 = data[1];
-      const b0 = data[2];
-
       for (let i = 0; i < data.length; i += 4) {
-        const r = data[i];
-        const g = data[i+1];
-        const b = data[i+2];
-
-        // Euclidean distance in color space
+        const r = data[i], g = data[i+1], b = data[i+2];
         const dist = Math.sqrt((r - r0)**2 + (g - g0)**2 + (b - b0)**2);
-        // Brightness
         const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
 
         if (dist < 22 || brightness > 230) {
-          data[i+3] = 0; // Fully transparent
+          data[i+3] = 0;
         } else if (dist < 50 || brightness > 212) {
-          // Soft transition edge for anti-aliasing
-          const distFactor = clamp((dist - 22) / 28);
+          const distFactor   = clamp((dist - 22) / 28);
           const brightFactor = clamp((230 - brightness) / 18);
           data[i+3] = Math.min(data[i+3], Math.floor(Math.min(distFactor, brightFactor) * 255));
         }
       }
       lk.putImageData(imgData, 0, 0);
     } catch (e) {
-      console.warn("Failed to process logo background keying due to security/CORS, using raw image.", e);
+      console.warn("Light keying failed, using raw.", e);
       logoCanvasKeyed = logoCanvasClipped;
+    }
+
+    // ── keyed-out version for DARK backgrounds ───────────────────────────
+    // Removes pixels by color-distance ONLY — no brightness threshold so
+    // bright/light logo elements (text, highlights) are fully preserved.
+    logoCanvasDarkKeyed = document.createElement('canvas');
+    logoCanvasDarkKeyed.width  = W2;
+    logoCanvasDarkKeyed.height = H2;
+    const ld = logoCanvasDarkKeyed.getContext('2d');
+    ld.drawImage(logoImg, 0, 0, W2, H2);
+
+    try {
+      const imgData2 = ld.getImageData(0, 0, W2, H2);
+      const data2 = imgData2.data;
+
+      for (let i = 0; i < data2.length; i += 4) {
+        const r = data2[i], g = data2[i+1], b = data2[i+2];
+        const dist = Math.sqrt((r - r0)**2 + (g - g0)**2 + (b - b0)**2);
+
+        if (dist < 22) {
+          data2[i+3] = 0; // fully transparent
+        } else if (dist < 50) {
+          // soft anti-alias edge only
+          data2[i+3] = Math.min(data2[i+3], Math.floor(clamp((dist - 22) / 28) * 255));
+        }
+        // all other pixels (including bright logo elements) kept fully opaque
+      }
+      ld.putImageData(imgData2, 0, 0);
+    } catch (e) {
+      console.warn("Dark keying failed, using raw.", e);
+      logoCanvasDarkKeyed = logoCanvasClipped;
     }
   }
 
