@@ -52,6 +52,7 @@
 
   // Background colours
   const BG = {
+    none:  null,           // transparent — no fill
     cream: '#fcf6f0',
     dark:  '#14100e',
     rose:  '#f5e6e0',
@@ -234,12 +235,22 @@
 
   // ── Background fill ───────────────────────────────────────────────────
   function fillBg(c, key) {
+    if (!key || key === 'none') {
+      // Transparent — just clear the canvas
+      c.clearRect(0, 0, W, H);
+      return;
+    }
     c.fillStyle = BG[key];
     c.fillRect(0, 0, W, H);
   }
 
+  function isDarkBg(key) {
+    return key === 'dark' || key === 'black';
+  }
+
   function getPalette(key) {
     const pal = {
+      none:  { text: '#4d2d18', text2: '#76543b' },
       cream: { text: '#4d2d18', text2: '#76543b' },
       dark:  { text: '#f5ece0', text2: '#c8a882' },
       rose:  { text: '#5a2a1a', text2: '#8a4a2a' },
@@ -698,6 +709,8 @@
       bgSwatches.forEach(s => s.classList.remove('active'));
       sw.classList.add('active');
       bgKey = sw.dataset.bg;
+      // Show checkerboard on the canvas element itself to indicate transparency
+      canvas.classList.toggle('bg-transparent', bgKey === 'none');
     });
   });
 
