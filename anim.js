@@ -66,25 +66,76 @@
 
   // ── Logo image ───────────────────────────────────────────────────────
   const logoImg = new Image();
-  let logoCanvas = null;
+  let logoCanvasClipped = null; // circle-clipped raw logo (retains cream bg inside circle)
+  let logoCanvasKeyed   = null; // fully keyed out logo (completely transparent bg)
 
   // Radius of the logo circle in the 600×600 canvas
   const LOGO_RADIUS = 272;
 
-  // Pre-render the logo clipped to its circle on a transparent canvas so
-  // it can be drawn efficiently every frame without re-clipping each time.
+  function getLogoSource(key) {
+    if (key === 'dark' || key === 'black') {
+      return logoCanvasClipped || logoImg;
+    } else {
+      return logoCanvasKeyed || logoImg;
+    }
+  }
+
+  // Pre-render two versions of the logo:
+  // 1. logoCanvasClipped (retains cream background inside a clean circle) for dark backgrounds
+  // 2. logoCanvasKeyed (fully keyed out, completely transparent background) for light/none backgrounds
   function processLogo() {
     const W2 = 600, H2 = 600;
-    logoCanvas = document.createElement('canvas');
-    logoCanvas.width  = W2;
-    logoCanvas.height = H2;
-    const lc = logoCanvas.getContext('2d');
-
-    // Clip to circle, then draw raw logo at display size
+    
+    // Create circle-clipped version
+    logoCanvasClipped = document.createElement('canvas');
+    logoCanvasClipped.width  = W2;
+    logoCanvasClipped.height = H2;
+    const lc = logoCanvasClipped.getContext('2d');
     lc.beginPath();
     lc.arc(W2 / 2, H2 / 2, LOGO_RADIUS, 0, Math.PI * 2);
     lc.clip();
     lc.drawImage(logoImg, 0, 0, W2, H2);
+
+    // Create keyed-out version
+    logoCanvasKeyed = document.createElement('canvas');
+    logoCanvasKeyed.width  = W2;
+    logoCanvasKeyed.height = H2;
+    const lk = logoCanvasKeyed.getContext('2d');
+    lk.drawImage(logoImg, 0, 0, W2, H2);
+
+    try {
+      const imgData = lk.getImageData(0, 0, W2, H2);
+      const data = imgData.data;
+
+      // Sample background color from top-left pixel (0,0)
+      const r0 = data[0];
+      const g0 = data[1];
+      const b0 = data[2];
+
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i+1];
+        const b = data[i+2];
+
+        // Euclidean distance in color space
+        const dist = Math.sqrt((r - r0)**2 + (g - g0)**2 + (b - b0)**2);
+        // Brightness
+        const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+
+        if (dist < 22 || brightness > 230) {
+          data[i+3] = 0; // Fully transparent
+        } else if (dist < 50 || brightness > 212) {
+          // Soft transition edge for anti-aliasing
+          const distFactor = clamp((dist - 22) / 28);
+          const brightFactor = clamp((230 - brightness) / 18);
+          data[i+3] = Math.min(data[i+3], Math.floor(Math.min(distFactor, brightFactor) * 255));
+        }
+      }
+      lk.putImageData(imgData, 0, 0);
+    } catch (e) {
+      console.warn("Failed to process logo background keying due to security/CORS, using raw image.", e);
+      logoCanvasKeyed = logoCanvasClipped;
+    }
   }
 
   logoImg.crossOrigin = 'anonymous';
@@ -175,7 +226,7 @@
    */
   function drawLogo(c, alpha = 1, scale = 1, offsetY = 0) {
     if (!logoReady) return;
-    const src = logoCanvas || logoImg;
+    const src = getLogoSource(bgKey);
     c.save();
     c.globalAlpha = alpha;
     c.translate(W / 2, H / 2 + offsetY);
@@ -189,7 +240,7 @@
    */
   function drawLogoCircleReveal(c, radius, alpha = 1, scale = 1) {
     if (!logoReady || radius <= 0) return;
-    const src = logoCanvas || logoImg;
+    const src = getLogoSource(bgKey);
     c.save();
     c.globalAlpha = alpha;
     c.translate(W / 2, H / 2);
@@ -206,7 +257,7 @@
    */
   function drawLogoVerticalWipe(c, wipe, alpha = 1) {
     if (!logoReady || wipe <= 0) return;
-    const src = logoCanvas || logoImg;
+    const src = getLogoSource(bgKey);
     c.save();
     c.globalAlpha = alpha;
     const revealTop = H - H * wipe;
@@ -222,7 +273,7 @@
    */
   function drawLogoHorizontalReveal(c, wipe, alpha = 1) {
     if (!logoReady || wipe <= 0) return;
-    const src = logoCanvas || logoImg;
+    const src = getLogoSource(bgKey);
     c.save();
     c.globalAlpha = alpha;
     const halfW = (W / 2) * wipe;
@@ -463,7 +514,7 @@
       c.rotate(rot);
       c.scale(s, s);
       c.globalAlpha = alpha;
-      const src = logoCanvas || logoImg;
+      const src = getLogoSource(bgKey);
       c.drawImage(src, -W / 2, -H / 2, W, H);
       c.restore();
     }
@@ -872,7 +923,7 @@
       if (!logoReady) { alert('Logo image is still loading.'); return; }
       // Embed logo as base64 in the SVG
       const tmpC = makeOC();
-      const src = logoCanvas || logoImg;
+      const src = getLogoSource(bgKey);
       tmpC.getContext('2d').drawImage(src, 0, 0, W, H);
       const dataURL = tmpC.toDataURL('image/png');
 
