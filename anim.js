@@ -39,8 +39,20 @@
   let loopTimer  = null;
   let rafId      = null;
   let logoReady  = false;
+  let nowTime    = 0;
 
-  const DURATIONS = { cinematic: 10, elegant: 6, bloom: 6, 'line-drawing': 6, 'vector-draw': 6 };
+  const DURATIONS = {
+    cinematic: 10,
+    elegant: 6,
+    bloom: 6,
+    'line-drawing': 6,
+    'vector-draw': 6,
+    glamour: 6,
+    glitch: 5,
+    aurora: 6,
+    'spin-expand': 5,
+    curtain: 6
+  };
 
   const SCENE_LABELS = {
     cinematic:     '✦ Cinematic Brand Reel — 10 sec',
@@ -48,6 +60,11 @@
     bloom:         'Lotus Bloom — 6 sec',
     'line-drawing':'Line Sketch — 6 sec',
     'vector-draw': 'Pure Vector Draw — 6 sec',
+    glamour:       '✨ Glitz & Glamour — 6 sec',
+    glitch:        '⚡ Editorial Glitch — 5 sec',
+    aurora:        '🌅 Champagne Aurora — 6 sec',
+    'spin-expand': '🌀 Whirlpool Reveal — 5 sec',
+    curtain:       '🎭 Theater Curtain Reveal — 6 sec'
   };
 
   // Background colours
@@ -679,6 +696,265 @@
     }
   }
 
+  // ── GLAMOUR SPARKLES ──────────────────────────────────────────────────
+  const glamourSparkles = [];
+  function initGlamourSparkles() {
+    glamourSparkles.length = 0;
+    for (let i = 0; i < 80; i++) {
+      glamourSparkles.push({
+        x: Math.random() * W,
+        y: Math.random() * H - H,
+        r: 1 + Math.random() * 2.8,
+        vy: 1.2 + Math.random() * 2.2,
+        vx: (Math.random() - 0.5) * 0.4,
+        rot: Math.random() * Math.PI * 2,
+        rotSpeed: (Math.random() - 0.5) * 0.08,
+        alpha: 0.35 + Math.random() * 0.65,
+      });
+    }
+  }
+
+  function stepGlamourSparkles() {
+    for (const p of glamourSparkles) {
+      p.y += p.vy * speed;
+      p.x += Math.sin(p.rot * 0.2) * 0.25 + p.vx * speed;
+      p.rot += p.rotSpeed * speed;
+      if (p.y > H) {
+        p.y = -20;
+        p.x = Math.random() * W;
+      }
+    }
+  }
+
+  function drawGlamourSparkles(c, alpha = 1) {
+    c.save();
+    c.fillStyle = GOLD;
+    for (const p of glamourSparkles) {
+      c.save();
+      c.globalAlpha = p.alpha * alpha;
+      c.translate(p.x, p.y);
+      c.rotate(p.rot);
+      c.beginPath();
+      c.moveTo(0, -p.r * 2);
+      c.quadraticCurveTo(0, 0, p.r * 2, 0);
+      c.quadraticCurveTo(0, 0, 0, p.r * 2);
+      c.quadraticCurveTo(0, 0, -p.r * 2, 0);
+      c.quadraticCurveTo(0, 0, 0, -p.r * 2);
+      c.closePath();
+      c.fill();
+      c.restore();
+    }
+    c.restore();
+  }
+
+  // ── NEW RENDER FUNCTIONS ─────────────────────────────────────────────
+
+  // Glitz & Glamour Style
+  function renderGlamour(c, t, bg) {
+    fillBg(c, bg);
+    stepGlamourSparkles();
+    drawGlamourSparkles(c, clamp(t / 0.85));
+
+    const logoA = easeO(seg(t, 0.15, 0.65));
+    const logoS = 0.85 + 0.15 * easeO(seg(t, 0.15, 0.75));
+    
+    if (logoA > 0) {
+      c.save();
+      c.globalAlpha = logoA * 0.45;
+      const g = c.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, 220);
+      g.addColorStop(0, GOLD);
+      g.addColorStop(1, 'rgba(211,168,134,0)');
+      c.fillStyle = g;
+      c.fillRect(0, 0, W, H);
+      c.restore();
+
+      drawLogo(c, logoA, logoS);
+    }
+
+    if (t > 0.65) {
+      drawShimmer(c, seg(t, 0.65, 0.85), 0.45);
+    }
+  }
+
+  // Cyber Chic Glitch Style
+  function renderGlitch(c, t, bg) {
+    fillBg(c, bg);
+
+    const revealT = seg(t, 0.0, 0.55);
+    const logoA = easeO(revealT);
+    const logoS = 0.95 + 0.05 * easeO(revealT);
+
+    if (logoA <= 0) return;
+
+    const isGlitching = (t > 0.05 && t < 0.45 && Math.random() < 0.35);
+
+    if (isGlitching) {
+      c.save();
+      c.globalAlpha = logoA;
+      const src = getLogoSource(bgKey);
+      const numSlices = 7;
+      const sliceH = H / numSlices;
+      
+      for (let i = 0; i < numSlices; i++) {
+        const sy = i * sliceH;
+        const sh = sliceH;
+        const dx = (Math.random() - 0.5) * 24;
+        c.drawImage(src, 0, sy, W, sh, dx, sy, W, sh);
+      }
+      
+      if (Math.random() < 0.4) {
+        c.globalCompositeOperation = 'color-dodge';
+        c.fillStyle = Math.random() < 0.5 ? 'rgba(211,168,134,0.15)' : 'rgba(255,255,255,0.1)';
+        c.fillRect(0, 0, W, H);
+      }
+      c.restore();
+    } else {
+      drawLogo(c, logoA, logoS);
+    }
+
+    if (t > 0.70) {
+      drawShimmer(c, seg(t, 0.70, 0.95), 0.35);
+    }
+  }
+
+  // Champagne Aurora Style
+  function renderAurora(c, t, bg) {
+    fillBg(c, bg);
+
+    c.save();
+    const waveT = nowTime ? nowTime / 1500 : t * 4;
+    const isDark = isDarkBg(bgKey);
+    c.globalAlpha = isDark ? 0.15 : 0.08;
+
+    const colors = [GOLD, '#f5e6e0', GOLD2];
+    for (let i = 0; i < 3; i++) {
+      c.fillStyle = colors[i];
+      c.beginPath();
+      c.moveTo(0, H);
+      for (let x = 0; x <= W; x += 20) {
+        const y = 300 + Math.sin(x * 0.01 + waveT + i * 2) * 45 + Math.cos(x * 0.005 + waveT * 0.5) * 30;
+        c.lineTo(x, y);
+      }
+      c.lineTo(W, H);
+      c.closePath();
+      c.fill();
+    }
+    c.restore();
+
+    const sweep = seg(t, 0.10, 0.70);
+    const scale = 0.93 + 0.07 * easeO(sweep);
+    
+    if (sweep > 0) {
+      const src = getLogoSource(bgKey);
+      c.save();
+      c.beginPath();
+      const sweepX = -250 + (W + 500) * easeO(sweep);
+      c.moveTo(sweepX, 0);
+      c.lineTo(sweepX + 250, 0);
+      c.lineTo(sweepX + 50, H);
+      c.lineTo(sweepX - 200, H);
+      c.closePath();
+      c.clip();
+      
+      c.translate(W / 2, H / 2);
+      c.scale(scale, scale);
+      c.drawImage(src, -W / 2, -H / 2, W, H);
+      c.restore();
+
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      c.strokeStyle = 'rgba(255,255,255,0.4)';
+      c.lineWidth = 4;
+      c.beginPath();
+      const sweepXLine = -250 + (W + 500) * easeO(sweep);
+      c.moveTo(sweepXLine + 125, 0);
+      c.lineTo(sweepXLine - 75, H);
+      c.stroke();
+      c.restore();
+    }
+  }
+
+  // Whirlpool Reveal Style
+  function renderSpinExpand(c, t, bg) {
+    fillBg(c, bg);
+
+    const revealT = clamp(t / 0.75);
+    const s = easeB(revealT);
+    const rot = (1 - easeO(revealT)) * 2.5 * Math.PI;
+    const alpha = easeO(seg(t, 0, 0.60));
+
+    if (t < 0.65) {
+      c.save();
+      c.strokeStyle = GOLD;
+      c.lineWidth = 1.2;
+      c.globalAlpha = (1 - revealT) * 0.6;
+      for (let i = 1; i <= 3; i++) {
+        c.beginPath();
+        c.arc(W / 2, H / 2, 100 * i * revealT, 0, Math.PI * 2);
+        c.stroke();
+      }
+      c.restore();
+    }
+
+    if (alpha > 0) {
+      c.save();
+      c.translate(W / 2, H / 2);
+      c.rotate(rot);
+      c.scale(s, s);
+      c.globalAlpha = alpha;
+      const src = getLogoSource(bgKey);
+      c.drawImage(src, -W / 2, -H / 2, W, H);
+      c.restore();
+    }
+
+    if (t > 0.75) {
+      drawShimmer(c, seg(t, 0.75, 0.95), 0.50);
+    }
+  }
+
+  // Theater Curtain Reveal Style
+  function renderCurtain(c, t, bg) {
+    fillBg(c, bg);
+
+    const lineT = clamp(t / 0.28);
+    const openT = easeO(seg(t, 0.22, 0.75));
+
+    if (lineT > 0 && openT < 0.99) {
+      c.save();
+      c.strokeStyle = GOLD;
+      c.lineWidth = 2.2;
+      c.globalAlpha = 1 - openT;
+      c.beginPath();
+      c.moveTo(W / 2, H / 2 - 250 * lineT);
+      c.lineTo(W / 2, H / 2 + 250 * lineT);
+      c.stroke();
+      c.restore();
+    }
+
+    if (openT > 0) {
+      const src = getLogoSource(bgKey);
+      const halfW = (W / 2) * openT;
+      
+      c.save();
+      c.beginPath();
+      c.rect(W / 2 - halfW, 0, halfW, H);
+      c.clip();
+      c.drawImage(src, 0, 0, W, H);
+      c.restore();
+
+      c.save();
+      c.beginPath();
+      c.rect(W / 2, 0, halfW, H);
+      c.clip();
+      c.drawImage(src, 0, 0, W, H);
+      c.restore();
+    }
+
+    if (t > 0.72) {
+      drawShimmer(c, seg(t, 0.72, 0.92), 0.45);
+    }
+  }
+
   // ── Master render ─────────────────────────────────────────────────────
   function render(t) {
     ctx.clearRect(0, 0, W, H);
@@ -686,11 +962,17 @@
     else if (animStyle === 'elegant')      renderElegant(ctx, t, bgKey);
     else if (animStyle === 'bloom')        renderBloom(ctx, t, bgKey);
     else if (animStyle === 'line-drawing') renderLineDrawing(ctx, t, bgKey);
-    else                                   renderVectorDraw(ctx, t, bgKey);
+    else if (animStyle === 'vector-draw')  renderVectorDraw(ctx, t, bgKey);
+    else if (animStyle === 'glamour')      renderGlamour(ctx, t, bgKey);
+    else if (animStyle === 'glitch')       renderGlitch(ctx, t, bgKey);
+    else if (animStyle === 'aurora')       renderAurora(ctx, t, bgKey);
+    else if (animStyle === 'spin-expand')  renderSpinExpand(ctx, t, bgKey);
+    else                                   renderCurtain(ctx, t, bgKey);
   }
 
   // ── Animation loop ────────────────────────────────────────────────────
   function tick(now) {
+    nowTime = now;
     if (!startTime) startTime = now;
     const dur = DURATIONS[animStyle] * 1000 / speed;
     const t   = clamp((now - startTime) / dur);
@@ -713,6 +995,7 @@
     playing   = true;
     playPauseBtn.textContent = '⏸ Pause';
     if (animStyle === 'cinematic') initParticles();
+    if (animStyle === 'glamour') initGlamourSparkles();
     rafId = requestAnimationFrame(tick);
   }
 
@@ -778,7 +1061,12 @@
     else if (animStyle === 'elegant')      renderElegant(c, t, bgKey);
     else if (animStyle === 'bloom')        renderBloom(c, t, bgKey);
     else if (animStyle === 'line-drawing') renderLineDrawing(c, t, bgKey);
-    else                                   renderVectorDraw(c, t, bgKey);
+    else if (animStyle === 'vector-draw')  renderVectorDraw(c, t, bgKey);
+    else if (animStyle === 'glamour')      renderGlamour(c, t, bgKey);
+    else if (animStyle === 'glitch')       renderGlitch(c, t, bgKey);
+    else if (animStyle === 'aurora')       renderAurora(c, t, bgKey);
+    else if (animStyle === 'spin-expand')  renderSpinExpand(c, t, bgKey);
+    else                                   renderCurtain(c, t, bgKey);
   }
 
   // ── Export overlay helpers ─────────────────────────────────────────────
@@ -804,6 +1092,7 @@
     const oc = makeOC(); const octx = oc.getContext('2d');
     const frames = [];
     if (animStyle === 'cinematic') initParticles();
+    if (animStyle === 'glamour') initGlamourSparkles();
 
     for (let i = 0; i < total; i++) {
       const t = clamp(i / (fps * animDur));
@@ -872,6 +1161,7 @@
 
     recorder.start();
     if (animStyle === 'cinematic') initParticles();
+    if (animStyle === 'glamour') initGlamourSparkles();
 
     for (let i = 0; i < total; i++) {
       const t = clamp(i / (fps * animDur));
@@ -945,6 +1235,7 @@
   // ── Boot — wait for image ─────────────────────────────────────────────
   sceneBadge.textContent = SCENE_LABELS[animStyle];
   initParticles();
+  initGlamourSparkles();
   // Draw placeholder while logo loads
   fillBg(ctx, bgKey);
   drawGlow(ctx, 0.3);
